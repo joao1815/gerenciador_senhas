@@ -11,7 +11,7 @@ Um protótipo de gerenciador de senhas feito com **FastAPI** e **Python** com in
 - Importação de senhas via CSV.
 - Exportação de senhas para CSV.
 
-> Nota: Este é apenas um protótipo. Criptografia e armazenamento seguro ainda não foram implementados.
+> Este é apenas um protótipo. Criptografia e armazenamento seguro ainda não foram implementados.
 
 ## Tecnologias
 
