@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+cryptography
+passlib[argon2]
+python-multipart

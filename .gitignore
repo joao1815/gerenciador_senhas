@@ -1,0 +1,28 @@
+# ambiente virtual 
+.venv/
+venv/
+env/
+ENV/
+
+# cache e compilaçao
+__pycache__/
+*.py[cod]
+*.pyo
+
+# banco de dados local
+senhas.db
+
+# logs temporarios
+*.log
+*.tmp
+*.swp
+
+# configuraçoes de editor
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# pastas locais
+nano/
+

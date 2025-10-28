@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ titulo }} - Gerenciador de Senhas</title>
+  <style>
+    :root{
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --text: #8317b6;
+      --muted: #6b7280;
+      --primary-1: #3b82f6;
+      --primary-2: #5744be;
+      --accent: linear-gradient(90deg,var(--primary-1),var(--primary-2));
+      --danger: #ef4444;
+      --success: #10b981;
+      --glass: rgba(255,255,255,0.6);
+      --radius: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root{
+        --bg: #0b1020;
+        --card: #0f1724;
+        --text: #e6eef6;
+        --muted: #9aa6bd;
+        --glass: rgba(255,255,255,0.03);
+      }
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg, #08123a 0%, #071033 40%), var(--bg); color:var(--text);}
+    .wrap{max-width:1100px;margin:28px auto;padding:20px;display:grid;grid-template-columns:1fr 380px;gap:20px;}
+    @media (max-width:980px){ .wrap{grid-template-columns:1fr; padding:16px} }
+
+    /* CARD */
+    .card{background:linear-gradient(180deg,var(--glass),transparent);backdrop-filter: blur(6px);border-radius:var(--radius);padding:18px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 6px 18px rgba(2,6,23,0.6);}
+    .header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    h1{margin:0;font-size:1.25rem;color:var(--primary-2)}
+    .sub{color:var(--muted);font-size:0.92rem;margin-top:6px}
+
+    /* Generator area */
+    #senha-display{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;display:block;background:var(--card);padding:14px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);margin-top:10px;word-break:break-all;font-size:1.05rem;}
+    .row{display:flex;gap:8px;align-items:center}
+    .controls{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}
+    .control{display:flex;align-items:center;gap:8px}
+    label{font-size:0.9rem;color:var(--muted)}
+    input[type="range"]{width:100%}
+    .switch{display:inline-flex;align-items:center;gap:8px}
+    .btn{
+      border:0;padding:10px 14px;border-radius:10px;color:white;background:var(--primary-1);
+      cursor:pointer;font-weight:600;box-shadow:0 6px 18px rgba(59,130,246,0.12);
+      transition:transform .12s ease, box-shadow .12s ease;
+    }
+    .btn:hover{transform:translateY(-3px)}
+    .btn.secondary{background:var(--card);color:var(--text);border:1px solid rgba(0,0,0,0.06);box-shadow:none}
+    .btn.ghost{background:transparent;color:var(--text);border:1px dashed rgba(255,255,255,0.04)}
+    .btn.danger{background:var(--danger);box-shadow:none}
+
+    /* Save area */
+    .save-form{display:flex;gap:8px;margin-top:12px;align-items:center}
+    .save-form input[type="text"]{flex:1;padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:var(--card);color:var(--text)}
+
+    /* saved list */
+    .list{max-height:420px;overflow:auto;margin-top:10px;padding-right:8px}
+    .item{display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;margin-bottom:8px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border:1px solid rgba(255,255,255,0.02)}
+    .meta{flex:1}
+    .label{font-weight:600}
+    .small{font-size:0.85rem;color:var(--muted)}
+    .actions{display:flex;gap:6px}
+
+    /* utilities */
+    .row-between{display:flex;justify-content:space-between;align-items:center}
+    .muted{color:var(--muted)}
+    .tiny{font-size:0.8rem;color:var(--muted)}
+
+    footer{margin-top:12px;text-align:center;color:var(--muted);font-size:0.85rem}
+
+    /* file input hide */
+    input[type=file]{display:none}
+
+    /* helpful */
+    .chip{background:rgba(82, 43, 43, 0.03);padding:6px 8px;border-radius:999px;font-size:0.85rem;border:1px solid rgba(255,255,255,0.02)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- left: Generator -->
+    <div class="card">
+      <div class="header">
+        <div>
+          <h1>🔐 Gerador de Senhas</h1>
+          <div class="sub">Gere senhas fortes, copie e salve — offline se necessário.</div>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn secondary" id="themeToggle" title="Alternar tema">🌓</button>
+          <div class="chip" id="backendStatus">Backend: <span class="tiny" id="backendText">—</span></div>
+        </div>
+      </div>
+
+      <div>
+        <label class="tiny">Senha Gerada</label>
+        <div id="senha-display">Clique em Gerar para criar uma senha</div>
+
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn" id="gerarBtn">Gerar</button>
+          <button class="btn secondary" id="copiarBtn">Copiar</button>
+          <button class="btn ghost" id="salvarBtn">Salvar</button>
+          <button class="btn secondary" id="saveServerBtn" title="Tentar salvar no servidor">Salvar no Servidor</button>
+        </div>
+
+        <div class="controls" style="margin-top:16px">
+          <div>
+            <label class="tiny">Tamanho: <span id="lenVal">16</span></label>
+            <input type="range" id="len" min="6" max="64" value="16" />
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div class="control switch"><input type="checkbox" id="upper" checked /> <label for="upper">Maiúsculas</label></div>
+            <div class="control switch"><input type="checkbox" id="lower" checked /> <label for="lower">Minúsculas</label></div>
+            <div class="control switch"><input type="checkbox" id="numbers" checked /> <label for="numbers">Números</label></div>
+            <div class="control switch"><input type="checkbox" id="symbols" checked /> <label for="symbols">Símbolos</label></div>
+          </div>
+        </div>
+
+        <div style="margin-top:18px">
+          <label class="tiny">Opções avançadas</label>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button class="btn secondary" id="useBackend">Preferir Backend</button>
+            <button class="btn secondary" id="regenLocal">Regenerar Localmente</button>
+          </div>
+          <div class="tiny" style="margin-top:8px;color:var(--muted)">Se o backend estiver offline, uma geração local será usada. Você pode salvar localmente ou tentar salvar no servidor.</div>
+        </div>
+
+        <hr style="margin:18px 0;border:none;border-top:1px solid rgba(255,255,255,0.02)"/>
+
+        <div class="row-between">
+          <div>
+            <label class="tiny">Salvar senha</label>
+            <div class="save-form">
+              <input type="text" id="saveLabel" placeholder="Rótulo (ex: email pessoal)" />
+              <button class="btn" id="saveLocalBtn">Salvar Local</button>
+            </div>
+          </div>
+
+          <div style="text-align:right">
+            <label class="tiny">Export / Import</label><br/>
+            <button class="btn secondary" id="exportBtn">Exportar CSV</button>
+            <label class="btn secondary" for="importFile">Importar</label>
+            <input type="file" id="importFile" accept=".csv,text/csv" />
+          </div>
+        </div>
+
+        <footer>Armazenamento local: <span id="storageCount">0</span> senhas</footer>
+      </div>
+    </div>
+
+    <!-- right: Saved list -->
+    <div class="card">
+      <div class="header">
+        <div>
+          <h1>💾 Senhas Salvas</h1>
+          <div class="sub">Armazenadas no navegador (localStorage). Você pode exportar e importar.</div>
+        </div>
+        <button class="btn ghost" id="clearAllBtn" title="Apagar todas">Limpar tudo</button>
+      </div>
+
+      <div class="list" id="savedList" aria-live="polite">
+        <!-- items here -->
+      </div>
+
+      <div style="margin-top:12px" class="tiny muted">As senhas salvas ficam no seu navegador. Para armazenar no servidor, utilize a opção "Salvar no Servidor".</div>
+    </div>
+  </div>
+
+<script>
+/* Utilities */
+const qs = s => document.querySelector(s);
+const qsa = s => Array.from(document.querySelectorAll(s));
+const STORAGE_KEY = 'senhas_salvas_v1';
+
+/* Elements  */
+const senhaDisplay = qs('#senha-display');
+const gerarBtn = qs('#gerarBtn');
+const copiarBtn = qs('#copiarBtn');
+const salvarBtn = qs('#salvarBtn');
+const saveLocalBtn = qs('#saveLocalBtn');
+const saveServerBtn = qs('#saveServerBtn');
+const exportBtn = qs('#exportBtn');
+const importFile = qs('#importFile');
+const savedList = qs('#savedList');
+const lenInput = qs('#len');
+const lenVal = qs('#lenVal');
+const upper = qs('#upper');
+const lower = qs('#lower');
+const numbers = qs('#numbers');
+const symbols = qs('#symbols');
+const useBackendBtn = qs('#useBackend');
+const regenLocalBtn = qs('#regenLocal');
+const backendText = qs('#backendText');
+const backendStatus = qs('#backendStatus');
+const saveLabel = qs('#saveLabel');
+const clearAllBtn = qs('#clearAllBtn');
+const themeToggle = qs('#themeToggle');
+const storageCount = qs('#storageCount');
+
+/*  State  */
+let preferBackend = false;
+let lastGenerated = '';
+let backendAvailable = false;
+
+/* Password generator (local) */
+function generateLocalPassword(length = 16, opts = {upper:true,lower:true,numbers:true,symbols:true}){
+  const up = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const low = 'abcdefghijklmnopqrstuvwxyz';
+  const nums = '0123456789';
+  const syms = '!@#$%^&*()-_=+[]{};:,.<>?';
+  let pool = '';
+  if(opts.upper) pool += up;
+  if(opts.lower) pool += low;
+  if(opts.numbers) pool += nums;
+  if(opts.symbols) pool += syms;
+  if(!pool) return '';
+  // ensure at least one of each selected category
+  let password = [];
+  const categories = [];
+  if(opts.upper) categories.push(up);
+  if(opts.lower) categories.push(low);
+  if(opts.numbers) categories.push(nums);
+  if(opts.symbols) categories.push(syms);
+
+  // add one guaranteed char from each selected category (if length allows)
+  for(let i=0;i<categories.length && password.length < length;i++){
+    const cat = categories[i];
+    password.push(cat[Math.floor(Math.random()*cat.length)]);
+  }
+  // fill rest
+  while(password.length < length){
+    password.push(pool[Math.floor(Math.random()*pool.length)]);
+  }
+  // shuffle
+  for(let i=password.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [password[i], password[j]] = [password[j], password[i]];
+  }
+  return password.join('');
+}
+
+/* Backend check ===== */
+async function checkBackend(){
+  try {
+    // Tenta um HEAD ou GET simples só pra checar. Aqui usamos GET /senhas/ mas ajustável.
+    const resp = await fetch('/senhas/', {method:'GET'});
+    if(!resp.ok) throw new Error('status '+resp.status);
+    backendAvailable = true;
+    backendText.textContent = 'online';
+    backendStatus.style.borderColor = 'rgba(16,185,129,0.35)';
+  } catch(e){
+    backendAvailable = false;
+    backendText.textContent = 'offline';
+    backendStatus.style.borderColor = 'rgba(239,68,68,0.15)';
+  }
+}
+
+/* run initial check */
+checkBackend();
+
+/* UI updates */
+function setGenerated(s){
+  lastGenerated = s;
+  senhaDisplay.textContent = s || '—';
+}
+lenInput.addEventListener('input', ()=> lenVal.textContent = lenInput.value);
+
+/*  Generate handling  */
+async function tryFetchBackend(){
+  try {
+    const resp = await fetch('/senhas/');
+    if(!resp.ok) throw new Error('Status ' + resp.status);
+    const data = await resp.json();
+    // assume backend returns { senha: "..." } or similar
+    if(data && data.senha) return data.senha;
+    // if backend returns just text
+    if(typeof data === 'string') return data;
+    throw new Error('Formato inesperado');
+  } catch(err){
+    throw err;
+  }
+}
+
+gerarBtn.addEventListener('click', async ()=>{
+  gerarBtn.disabled = true;
+  setGenerated('Gerando... 🔄');
+  try {
+    let senha = '';
+    if(preferBackend && backendAvailable){
+      try {
+        senha = await tryFetchBackend();
+      } catch(e){
+        console.warn('Erro backend, caindo para local', e);
+        senha = generateLocalPassword(parseInt(lenInput.value), {
+          upper: upper.checked, lower: lower.checked,
+          numbers: numbers.checked, symbols: symbols.checked
+        });
+      }
+    } else if(preferBackend && !backendAvailable){
+      // preferBackend true but backend offline -> local fallback
+      senha = generateLocalPassword(parseInt(lenInput.value), {
+        upper: upper.checked, lower: lower.checked,
+        numbers: numbers.checked, symbols: symbols.checked
+      });
+    } else {
+      // prefer backend == false -> try local first
+      senha = generateLocalPassword(parseInt(lenInput.value), {
+        upper: upper.checked, lower: lower.checked,
+        numbers: numbers.checked, symbols: symbols.checked
+      });
+      // still attempt optional backend fetch to update "official" version (non-blocking)
+      if(backendAvailable){
+        try {
+          const remote = await tryFetchBackend();
+          if(remote) senha = remote;
+        } catch(e){ /* ignore */ }
+      }
+    }
+    setGenerated(senha);
+  } catch(err){
+    console.error(err);
+    setGenerated('Erro ao gerar.');
+  } finally {
+    gerarBtn.disabled = false;
+  }
+});
+
+/* button to explicitly prefer backend or not */
+useBackendBtn.addEventListener('click', ()=>{
+  preferBackend = !preferBackend;
+  useBackendBtn.textContent = preferBackend ? 'Preferir Backend ✅' : 'Preferir Backend';
+  useBackendBtn.classList.toggle('btn', preferBackend);
+});
+
+/* regenerate local (force) */
+regenLocalBtn.addEventListener('click', ()=>{
+  const senha = generateLocalPassword(parseInt(lenInput.value), {
+    upper: upper.checked, lower: lower.checked,
+    numbers: numbers.checked, symbols: symbols.checked
+  });
+  setGenerated(senha);
+});
+
+/* copiar */
+copiarBtn.addEventListener('click', async ()=>{
+  if(!lastGenerated) return;
+  try {
+    await navigator.clipboard.writeText(lastGenerated);
+    copiarBtn.textContent = 'Copiado ✅';
+    setTimeout(()=> copiarBtn.textContent = 'Copiar', 1300);
+  } catch(e){
+    alert('Falha ao copiar. Se estiver no navegador, permita clipboard access.');
+  }
+});
+
+/*  Storage (local)  */
+function loadStorage(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return [];
+    return JSON.parse(raw);
+  } catch(e){
+    console.error('Erro lendo storage', e);
+    return [];
+  }
+}
+function saveStorage(arr){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+  renderList();
+}
+
+/* add item */
+saveLocalBtn.addEventListener('click', ()=>{
+  if(!lastGenerated){
+    alert('Gere uma senha primeiro.');
+    return;
+  }
+  const label = saveLabel.value.trim() || 'Sem rótulo';
+  const now = (new Date()).toISOString();
+  const item = {id:Date.now().toString(36), label, senha:lastGenerated, created:now};
+  const arr = loadStorage();
+  arr.unshift(item);
+  saveStorage(arr);
+  saveLabel.value = '';
+});
+
+/* try save to server */
+saveServerBtn.addEventListener('click', async ()=>{
+  if(!lastGenerated) { alert('Gere uma senha primeiro.'); return; }
+  const payload = {label: saveLabel.value.trim() || 'Sem rótulo', senha: lastGenerated, ts: (new Date()).toISOString()};
+  try {
+    const resp = await fetch('/senhas/save', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    if(!resp.ok) throw new Error('Status '+resp.status);
+    // assume server saved; optionally store returned id
+    alert('Salvo no servidor com sucesso ✅');
+  } catch(e){
+    // fallback local save
+    console.warn('Salvar no servidor falhou, salvando localmente', e);
+    const arr = loadStorage();
+    arr.unshift({id:Date.now().toString(36), label:payload.label, senha:payload.senha, created:payload.ts, serverSaved:false});
+    saveStorage(arr);
+    alert('Servidor indisponível — senha salva localmente.');
+    checkBackend(); // atualiza status
+  }
+});
+
+/* render saved list */
+function renderList(){
+  const arr = loadStorage();
+  savedList.innerHTML = '';
+  storageCount.textContent = arr.length.toString();
+  arr.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.innerHTML = `
+      <div style="width:100%;display:flex;gap:10px;align-items:center">
+        <div class="meta">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div>
+              <div class="label">${escapeHtml(item.label)}</div>
+              <div class="small tiny">${new Date(item.created).toLocaleString()}</div>
+            </div>
+            <div class="tiny muted" style="font-family:ui-monospace,monospace">${(item.serverSaved? '🔒 Servidor' : '')}</div>
+          </div>
+          <div style="margin-top:8px;display:flex;justify-content:space-between;gap:8px;align-items:center">
+            <div class="small" style="flex:1;word-break:break-all;">${escapeHtml(item.senha)}</div>
+            <div class="actions">
+              <button class="btn secondary copy-item" data-id="${item.id}" title="Copiar">Copiar</button>
+              <button class="btn ghost edit-item" data-id="${item.id}" title="Editar rótulo">Editar</button>
+              <button class="btn danger delete-item" data-id="${item.id}" title="Excluir">Excluir</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    savedList.appendChild(el);
+  });
+  // attach listeners
+  qsa('.copy-item').forEach(btn => btn.onclick = copyItemHandler);
+  qsa('.delete-item').forEach(btn => btn.onclick = deleteItemHandler);
+  qsa('.edit-item').forEach(btn => btn.onclick = editItemHandler);
+}
+
+/* helpers */
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(m){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m];});
+}
+
+async function copyItemHandler(e){
+  const id = e.currentTarget.dataset.id;
+  const arr = loadStorage();
+  const it = arr.find(x=>x.id===id);
+  if(!it) return;
+  try {
+    await navigator.clipboard.writeText(it.senha);
+    e.currentTarget.textContent = 'Copiado ✅';
+    setTimeout(()=>e.currentTarget.textContent='Copiar',1400);
+  } catch(e){
+    alert('Erro ao copiar.');
+  }
+}
+
+function deleteItemHandler(e){
+  if(!confirm('Excluir esta senha?')) return;
+  const id = e.currentTarget.dataset.id;
+  let arr = loadStorage();
+  arr = arr.filter(x=>x.id !== id);
+  saveStorage(arr);
+}
+
+function editItemHandler(e){
+  const id = e.currentTarget.dataset.id;
+  const arr = loadStorage();
+  const it = arr.find(x=>x.id===id);
+  if(!it) return;
+  const newLabel = prompt('Editar rótulo:', it.label);
+  if(newLabel !== null){
+    it.label = newLabel.trim() || it.label;
+    saveStorage(arr);
+  }
+}
+
+/* export CSV */
+exportBtn.addEventListener('click', ()=>{
+  const arr = loadStorage();
+  if(!arr.length){ alert('Nenhuma senha salva.'); return; }
+  const lines = [['id','label','senha','created','serverSaved']];
+  arr.forEach(it => lines.push([it.id, it.label.replace(/"/g,'""'), it.senha.replace(/"/g,'""'), it.created, it.serverSaved?true:false]));
+  const csv = lines.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'senhas_export.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+/* import */
+importFile.addEventListener('change', async (ev)=>{
+  const file = ev.target.files[0];
+  if(!file) return;
+  const text = await file.text();
+  // naive CSV parse expecting the format we exported
+  const rows = text.split(/\r?\n/).map(r => r.trim()).filter(Boolean);
+  const parsed = [];
+  for(let i=1;i<rows.length;i++){
+    const row = rows[i];
+    // simple split by comma that handles "quoted" values
+    const cols = csvSplit(row);
+    if(cols.length >= 4){
+      parsed.push({id:cols[0], label:cols[1], senha:cols[2], created:cols[3], serverSaved: (cols[4] === 'true')});
+    }
+  }
+  const arr = loadStorage();
+  const merged = parsed.concat(arr);
+  saveStorage(merged);
+  alert('Importado ' + parsed.length + ' senhas.');
+  importFile.value = '';
+});
+
+/* simple CSV quoted split */
+function csvSplit(row){
+  const res = [];
+  let cur = '';
+  let inQuotes = false;
+  for(let i=0;i<row.length;i++){
+    const ch = row[i];
+    if(ch === '"' && row[i+1] === '"'){ cur += '"'; i++; continue; }
+    if(ch === '"'){ inQuotes = !inQuotes; continue; }
+    if(ch === ',' && !inQuotes){ res.push(cur); cur=''; continue; }
+    cur += ch;
+  }
+  res.push(cur);
+  return res;
+}
+
+/* clear all */
+clearAllBtn.addEventListener('click', ()=>{
+  if(!confirm('Apagar todas as senhas salvas localmente?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  renderList();
+});
+
+/* initial render */
+renderList();
+
+/* ===== copying and saving generated via salvarBtn (quick save) ===== */
+salvarBtn.addEventListener('click', ()=>{
+  if(!lastGenerated){ alert('Gere uma senha primeiro.'); return; }
+  const label = prompt('Rótulo para esta senha:', 'Sem rótulo');
+  const it = {id:Date.now().toString(36), label: label || 'Sem rótulo', senha: lastGenerated, created: (new Date()).toISOString()};
+  const arr = loadStorage();
+  arr.unshift(it);
+  saveStorage(arr);
+});
+
+/* ===== theme toggle ===== */
+function toggleTheme(){
+  // simple approach: add data-theme to body
+  if(document.documentElement.hasAttribute('data-theme') && document.documentElement.getAttribute('data-theme') === 'dark'){
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.removeItem('ui_theme');
+  } else {
+    document.documentElement.setAttribute('data-theme','dark');
+    localStorage.setItem('ui_theme','dark');
+  }
+}
+themeToggle.addEventListener('click', toggleTheme);
+// apply saved preference
+(function applySavedTheme(){
+  const t = localStorage.getItem('ui_theme');
+  if(t === 'dark') document.documentElement.setAttribute('data-theme','dark');
+})();
+
+/*  periodic backend check  */
+setInterval(checkBackend, 20_000); // verifica a cada 20s
+
+/* helper: try to generate one at load for demo = */
+(function generateInitial(){
+  const s = generateLocalPassword(16, {upper:true,lower:true,numbers:true,symbols:true});
+  setGenerated(s);
+})();
+</script>
+</body>
+</html>
