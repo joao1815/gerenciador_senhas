@@ -7,6 +7,9 @@ Um protótipo de gerenciador de senhas feito com **FastAPI** e **Python** com in
 - Salvar senhas localmente
 - Gerar senhas aleatórias
 - Interface web com formulário para inserção e visualização de senhas
+- Armazenamento local das senhas.
+- Importação de senhas via CSV.
+- Exportação de senhas para CSV.
 
 > Nota: Este é apenas um protótipo. Criptografia e armazenamento seguro ainda não foram implementados.
 
